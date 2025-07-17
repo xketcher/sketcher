@@ -38,6 +38,8 @@ async def send_msg(req: Request, room: str):
             await ws.send_json(msg)
         except Exception as e:
             rooms[room].remove(ws)
+    if not rooms[room]:
+        del rooms[room]
     return {
         "room": room,
         "total_client": len(rooms.get(room, []))
