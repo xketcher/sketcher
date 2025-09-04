@@ -24,6 +24,7 @@ def normalize(text: str) -> str:
     return text.strip()
 
 def split_into_sentences(text: str) -> List[str]:
+    # Myanmar punctuation: ၊ (U+104A), ။ (U+104B), . ? ! \n
     parts = re.split(r"(?<=[\u104A\u104B\.\?\!\n])", text)
     return [s.strip() for s in parts if s.strip()]
 
@@ -46,8 +47,8 @@ def chunk_text(text: str, chunk_size=600, overlap=140) -> List[str]:
     return chunks
 
 def myanmar_tokenizer(text: str):
-    # safer engine
-    return word_tokenize(text, engine="newmm")
+    # use safe, built-in engine (not attacut)
+    return word_tokenize(text, engine="newmm")  
 
 
 # ----------------------
