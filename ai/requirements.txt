@@ -4,4 +4,3 @@ scikit-learn
 pydantic
 requests
 pythainlp
-attacut
