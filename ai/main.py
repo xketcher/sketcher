@@ -11,6 +11,7 @@ from fastapi import FastAPI, Query
 from pydantic import BaseModel
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+from pythainlp.tokenize import word_tokenize  # Myanmar word tokenizer
 
 
 # ----------------------
@@ -23,6 +24,7 @@ def normalize(text: str) -> str:
     return text.strip()
 
 def split_into_sentences(text: str) -> List[str]:
+    # Myanmar punctuation: \u104A, \u104B, . ? ! \n
     parts = re.split(r"(?<=[\u104A\u104B\.\?\!\n])", text)
     return [s.strip() for s in parts if s.strip()]
 
@@ -44,20 +46,27 @@ def chunk_text(text: str, chunk_size=600, overlap=140) -> List[str]:
         chunks.append(cur)
     return chunks
 
+def myanmar_tokenizer(text: str):
+    return word_tokenize(text, engine="mmcut")
+
 
 # ----------------------
-# Load data (from GitHub raw)
+# Load data from GitHub raw
 # ----------------------
 DATA_URL = "https://raw.githubusercontent.com/xketcher/sketcher/main/data.txt"
-RAW_TEXT = requests.get(DATA_URL).text
+try:
+    RAW_TEXT = requests.get(DATA_URL, timeout=10).text
+except requests.RequestException as e:
+    RAW_TEXT = ""
+    print("Failed to load data:", e)
 
 chunks = chunk_text(RAW_TEXT, chunk_size=600, overlap=140)
-vectorizer = TfidfVectorizer(analyzer="char", ngram_range=(2, 5))
+vectorizer = TfidfVectorizer(tokenizer=myanmar_tokenizer, ngram_range=(1,2))
 matrix = vectorizer.fit_transform(chunks)
 
 
 # ----------------------
-# FastAPI
+# FastAPI app
 # ----------------------
 app = FastAPI(title="Pyay Ti Oo QA API")
 
@@ -69,15 +78,23 @@ class AnswerResponse(BaseModel):
 def ask(query: str = Query(..., description="မေးချင်တဲ့မေးခွန်း (မြန်မာ)")):
     qv = vectorizer.transform([query])
     sims = cosine_similarity(qv, matrix)[0]
+    
+    # Top 5 chunks
     ranked = sorted(zip(sims, chunks), key=lambda x: x[0], reverse=True)[:5]
     candidates = [c for _, c in ranked]
 
-    # အနည်းဆုံး တစ်ကြောင်း ထုတ်
-    best = candidates[0]
-    sentences = split_into_sentences(best)
-    answer = sentences[0] if sentences else best[:300]
+    # Top chunk -> sentence-level similarity
+    best_sentence = ""
+    best_score = 0.0
+    for c in candidates:
+        for s in split_into_sentences(c):
+            sv = vectorizer.transform([s])
+            score = cosine_similarity(qv, sv)[0][0]
+            if score > best_score:
+                best_score = score
+                best_sentence = s
 
     return AnswerResponse(
-        answer=answer,
+        answer=best_sentence if best_sentence else candidates[0],
         matches=[c[:150] + "…" for c in candidates]
     )
