@@ -11,7 +11,7 @@ from fastapi import FastAPI, Query
 from pydantic import BaseModel
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-from pythainlp.tokenize import word_tokenize  # Myanmar word tokenizer
+from pythainlp.tokenize import word_tokenize
 
 
 # ----------------------
@@ -24,7 +24,6 @@ def normalize(text: str) -> str:
     return text.strip()
 
 def split_into_sentences(text: str) -> List[str]:
-    # Myanmar punctuation: \u104A, \u104B, . ? ! \n
     parts = re.split(r"(?<=[\u104A\u104B\.\?\!\n])", text)
     return [s.strip() for s in parts if s.strip()]
 
@@ -47,7 +46,8 @@ def chunk_text(text: str, chunk_size=600, overlap=140) -> List[str]:
     return chunks
 
 def myanmar_tokenizer(text: str):
-    return word_tokenize(text, engine="mmcut")
+    # safer engine
+    return word_tokenize(text, engine="newmm")
 
 
 # ----------------------
@@ -61,6 +61,9 @@ except requests.RequestException as e:
     print("Failed to load data:", e)
 
 chunks = chunk_text(RAW_TEXT, chunk_size=600, overlap=140)
+if not chunks:  # fallback
+    chunks = ["ဒေတာမရရှိပါ။"]
+
 vectorizer = TfidfVectorizer(tokenizer=myanmar_tokenizer, ngram_range=(1,2))
 matrix = vectorizer.fit_transform(chunks)
 
@@ -78,16 +81,16 @@ class AnswerResponse(BaseModel):
 def ask(query: str = Query(..., description="မေးချင်တဲ့မေးခွန်း (မြန်မာ)")):
     qv = vectorizer.transform([query])
     sims = cosine_similarity(qv, matrix)[0]
-    
-    # Top 5 chunks
+
     ranked = sorted(zip(sims, chunks), key=lambda x: x[0], reverse=True)[:5]
     candidates = [c for _, c in ranked]
 
-    # Top chunk -> sentence-level similarity
     best_sentence = ""
     best_score = 0.0
     for c in candidates:
         for s in split_into_sentences(c):
+            if not s.strip():
+                continue
             sv = vectorizer.transform([s])
             score = cosine_similarity(qv, sv)[0][0]
             if score > best_score:
