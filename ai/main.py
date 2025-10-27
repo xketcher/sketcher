@@ -5,7 +5,7 @@ import torch
 app = FastAPI()
 
 # Local model load (CPU friendly version: 1B~3B recommended for free server)
-MODEL_NAME = "mosaicml/mpt-7b-instruct"  # GPU ရှိရင် 7B run, CPU only: smaller model recommend
+MODEL_NAME = "mosaicml/mpt-3b-instruct"  # GPU ရှိရင် 7B run, CPU only: smaller model recommend
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 model = AutoModelForCausalLM.from_pretrained(MODEL_NAME, device_map="auto")  # GPU မရှိရင် device_map=None
 
