@@ -1,3 +1,4 @@
 fastapi
 uvicorn
 requests
+pyapksigner>=0.1.9
