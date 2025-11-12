@@ -1,43 +1,54 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import JSONResponse
-import os, requests
-from pyapksigner import Signer
+import tempfile, subprocess, shutil, os, requests
 
 app = FastAPI()
 
+# config
 KEYSTORE_PATH = "my.jks"
 KEY_ALIAS = "sketcher"
 STORE_PASS = "sketcher"
 KEY_PASS = "sketcher"
-SIGNED_DIR = "signed_apks"
 UPLOAD_URL = "https://lightblue-koala-805003.hostingersite.com/upload.php"
 
-os.makedirs(SIGNED_DIR, exist_ok=True)
 
-@app.post("/sign-apk")
-async def sign_and_upload(file: UploadFile = File(...)):
+@app.post("/sign")
+async def sign_apk(apk: UploadFile = File(...)):
     try:
-        input_path = f"/tmp/{file.filename}"
-        with open(input_path, "wb") as f:
-            f.write(await file.read())
+        # Step 1: Save uploaded APK
+        with tempfile.TemporaryDirectory() as tmpdir:
+            input_path = os.path.join(tmpdir, apk.filename)
+            output_path = os.path.join(tmpdir, f"signed_{apk.filename}")
 
-        signed_path = os.path.join(SIGNED_DIR, f"signed_{file.filename}")
+            with open(input_path, "wb") as f:
+                f.write(await apk.read())
 
-        signer = Signer(
-            keystore=KEYSTORE_PATH,
-            keystore_pass=STORE_PASS,
-            key_pass=KEY_PASS,
-            alias=KEY_ALIAS
-        )
-        signer.sign(input_path, signed_path)
+            # Step 2: Check if zipalign & apksigner exist
+            if shutil.which("apksigner") is None:
+                return JSONResponse({"error": "apksigner not found in environment"}, status_code=500)
 
-        with open(signed_path, "rb") as f:
-            upload_response = requests.post(UPLOAD_URL, files={"file": f})
+            # Step 3: Sign APK
+            cmd = [
+                "apksigner", "sign",
+                "--ks", KEYSTORE_PATH,
+                "--ks-pass", f"pass:{STORE_PASS}",
+                "--key-pass", f"pass:{KEY_PASS}",
+                "--ks-key-alias", KEY_ALIAS,
+                "--out", output_path,
+                input_path
+            ]
+            subprocess.run(cmd, check=True)
 
-        if upload_response.status_code == 200:
-            return {"message": "APK signed and uploaded successfully ✅", "upload_response": upload_response.text}
-        else:
-            return JSONResponse({"error": "Upload failed", "response": upload_response.text}, status_code=500)
+            # Step 4: Upload signed APK
+            with open(output_path, "rb") as signed_file:
+                response = requests.post(UPLOAD_URL, files={"file": signed_file})
 
+            if response.status_code != 200:
+                return JSONResponse({"error": f"Upload failed: {response.text}"}, status_code=500)
+
+            return {"success": True, "upload_response": response.text}
+
+    except subprocess.CalledProcessError as e:
+        return JSONResponse({"error": f"Signing failed: {e}"}, status_code=500)
     except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=500).
+        return JSONResponse({"error": str(e)}, status_code=500)
