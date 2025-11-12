@@ -1,18 +1,18 @@
 import os
-import subprocess
 import requests
 from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import JSONResponse
+from pyapksigner import Signer
 
 app = FastAPI()
 
-# --- Signing info ---
+# --- Signing configuration ---
 KEYSTORE_PATH = "my.jks"
 KEY_ALIAS = "sketcher"
 STORE_PASS = "sketcher"
 KEY_PASS = "sketcher"
 
-# --- Output & remote upload URL ---
+# --- Output & remote upload ---
 SIGNED_DIR = "signed_apks"
 UPLOAD_URL = "https://lightblue-koala-805003.hostingersite.com/upload.php"
 os.makedirs(SIGNED_DIR, exist_ok=True)
@@ -21,46 +21,31 @@ os.makedirs(SIGNED_DIR, exist_ok=True)
 @app.post("/sign-apk")
 async def sign_and_upload(file: UploadFile = File(...)):
     try:
-        # Step 1: Save uploaded file
+        # Step 1: Save uploaded APK temporarily
         input_path = f"/tmp/{file.filename}"
         with open(input_path, "wb") as f:
             f.write(await file.read())
 
-        # Step 2: Define signed file path
+        # Step 2: Define signed output path
         signed_path = os.path.join(SIGNED_DIR, f"signed_{file.filename}")
 
-        # Step 3: Run jarsigner
-        cmd = [
-            "jarsigner",
-            "-verbose",
-            "-sigalg", "SHA256withRSA",
-            "-digestalg", "SHA-256",
-            "-keystore", KEYSTORE_PATH,
-            "-storepass", STORE_PASS,
-            "-keypass", KEY_PASS,
-            input_path,
-            KEY_ALIAS
-        ]
-
-        result = subprocess.run(cmd, capture_output=True, text=True)
-
-        if result.returncode != 0:
-            return JSONResponse(
-                {"error": "Signing failed", "details": result.stderr},
-                status_code=500
-            )
-
-        # Move to signed dir
-        os.rename(input_path, signed_path)
+        # Step 3: Sign APK using pyapksigner
+        signer = Signer(
+            keystore=KEYSTORE_PATH,
+            keystore_pass=STORE_PASS,
+            key_pass=KEY_PASS,
+            alias=KEY_ALIAS
+        )
+        signer.sign(input_path, signed_path)
 
         # Step 4: Upload signed APK to remote PHP server
         with open(signed_path, "rb") as f:
             upload_response = requests.post(UPLOAD_URL, files={"file": f})
 
-        # Step 5: Check upload result
+        # Step 5: Handle response
         if upload_response.status_code == 200:
             return {
-                "message": "APK signed and uploaded successfully",
+                "message": "APK signed and uploaded successfully ✅",
                 "upload_response": upload_response.text
             }
         else:
