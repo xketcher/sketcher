@@ -7,7 +7,7 @@ app = FastAPI()
 TMP = "/tmp"
 
 # Keystore config
-KEYSTORE = "sketcher.jks"
+KEYSTORE = "/app/sketcher.jks"
 STOREPASS = "sketcher"
 KEYALIAS = "sketcher"
 KEYPASS = "sketcher"
