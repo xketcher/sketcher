@@ -1,30 +1,26 @@
 FROM ubuntu:22.04
 
-ENV DEBIAN_FRONTEND=noninteractive
+ENV ANDROID_NDK_VERSION=r26d
+ENV ANDROID_NDK_HOME=/opt/android-ndk
+ENV PATH=$PATH:$ANDROID_NDK_HOME
 
-# System dependencies
 RUN apt update && apt install -y \
-    openjdk-17-jdk \
-    wget \
-    unzip \
-    zipalign \
-    python3 \
-    python3-pip \
+    wget unzip python3 python3-pip openjdk-17-jdk \
     && rm -rf /var/lib/apt/lists/*
 
-# Android Build Tools (apksigner)
-RUN mkdir -p /opt/android-sdk && \
-    wget https://dl.google.com/android/repository/build-tools_r34-linux.zip && \
-    unzip build-tools_r34-linux.zip -d /opt/android-sdk && \
-    rm build-tools_r34-linux.zip
+# Download Android NDK
+RUN wget https://dl.google.com/android/repository/android-ndk-${ANDROID_NDK_VERSION}-linux.zip \
+    && unzip android-ndk-${ANDROID_NDK_VERSION}-linux.zip \
+    && mv android-ndk-${ANDROID_NDK_VERSION} ${ANDROID_NDK_HOME} \
+    && rm android-ndk-${ANDROID_NDK_VERSION}-linux.zip
 
-ENV PATH="/opt/android-sdk/android-14:${PATH}"
-
+# Install python deps
 WORKDIR /app
-
 COPY requirements.txt .
-RUN pip3 install -r requirements.txt
+RUN pip3 install --no-cache-dir -r requirements.txt
 
-COPY . .
+COPY app ./app
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "10000"]
+EXPOSE 8000
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
