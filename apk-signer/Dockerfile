@@ -1,26 +1,25 @@
-FROM ubuntu:22.04
+FROM openjdk:17-jdk-slim
 
-ENV ANDROID_NDK_VERSION=r26d
-ENV ANDROID_NDK_HOME=/opt/android-ndk
-ENV PATH=$PATH:$ANDROID_NDK_HOME
+# Install system packages
+RUN apt-get update && \
+    apt-get install -y python3 python3-pip wget unzip zip && \
+    apt-get clean
 
-RUN apt update && apt install -y \
-    wget unzip python3 python3-pip openjdk-17-jdk \
-    && rm -rf /var/lib/apt/lists/*
+# Install Android command line tools (for apksigner)
+RUN wget https://dl.google.com/android/repository/commandlinetools-linux-10406996_latest.zip && \
+    unzip commandlinetools-linux-*.zip -d /android && \
+    rm commandlinetools-linux-*.zip
 
-# Download Android NDK
-RUN wget https://dl.google.com/android/repository/android-ndk-${ANDROID_NDK_VERSION}-linux.zip \
-    && unzip android-ndk-${ANDROID_NDK_VERSION}-linux.zip \
-    && mv android-ndk-${ANDROID_NDK_VERSION} ${ANDROID_NDK_HOME} \
-    && rm android-ndk-${ANDROID_NDK_VERSION}-linux.zip
+ENV ANDROID_HOME=/android
+ENV PATH=$PATH:/android/cmdline-tools/bin:/android/platform-tools
 
-# Install python deps
 WORKDIR /app
+
 COPY requirements.txt .
 RUN pip3 install --no-cache-dir -r requirements.txt
 
-COPY app ./app
+COPY . .
 
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
