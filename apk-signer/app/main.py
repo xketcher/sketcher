@@ -4,6 +4,7 @@ import subprocess
 import zipfile
 from fastapi import FastAPI
 from pydantic import BaseModel
+from fastapi.staticfiles import StaticFiles
 
 app = FastAPI()
 
@@ -13,6 +14,12 @@ DOWNLOAD_DIR = os.path.join(BASE_DIR, "download")
 
 os.makedirs(WORK_DIR, exist_ok=True)
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
+
+app.mount(
+    "/download",
+    StaticFiles(directory="download"),
+    name="download"
+)
 
 class NDKBuildRequest(BaseModel):
     name: str
