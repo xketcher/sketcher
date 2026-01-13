@@ -1,18 +1,36 @@
 FROM eclipse-temurin:17-jdk-jammy
 
-# system tools
+ENV ANDROID_HOME=/android
+ENV ANDROID_SDK_ROOT=/android
+ENV PATH=$PATH:/android/platform-tools:/android/build-tools/34.0.0
+
+# --------------------
+# Install system deps
+# --------------------
 RUN apt-get update && \
     apt-get install -y python3 python3-pip wget unzip zip && \
     apt-get clean
 
-# Android command line tools (apksigner)
-RUN wget https://dl.google.com/android/repository/commandlinetools-linux-10406996_latest.zip && \
-    unzip commandlinetools-linux-*.zip -d /android && \
+# --------------------
+# Android SDK tools
+# --------------------
+RUN mkdir -p /android/cmdline-tools && \
+    wget https://dl.google.com/android/repository/commandlinetools-linux-10406996_latest.zip && \
+    unzip commandlinetools-linux-*.zip -d /android/cmdline-tools && \
+    mv /android/cmdline-tools/cmdline-tools /android/cmdline-tools/latest && \
     rm commandlinetools-linux-*.zip
 
-ENV ANDROID_HOME=/android
-ENV PATH=$PATH:/android/cmdline-tools/bin:/android/platform-tools
+ENV PATH=$PATH:/android/cmdline-tools/latest/bin
 
+# --------------------
+# Accept licenses + install build-tools
+# --------------------
+RUN yes | sdkmanager --licenses && \
+    sdkmanager "platform-tools" "build-tools;34.0.0"
+
+# --------------------
+# App
+# --------------------
 WORKDIR /app
 
 COPY requirements.txt .
