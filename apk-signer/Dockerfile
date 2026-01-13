@@ -1,11 +1,11 @@
-FROM openjdk:17-jdk-slim
+FROM eclipse-temurin:17-jdk-jammy
 
-# Install system packages
+# system tools
 RUN apt-get update && \
     apt-get install -y python3 python3-pip wget unzip zip && \
     apt-get clean
 
-# Install Android command line tools (for apksigner)
+# Android command line tools (apksigner)
 RUN wget https://dl.google.com/android/repository/commandlinetools-linux-10406996_latest.zip && \
     unzip commandlinetools-linux-*.zip -d /android && \
     rm commandlinetools-linux-*.zip
