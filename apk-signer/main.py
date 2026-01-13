@@ -7,10 +7,10 @@ app = FastAPI()
 TMP = "/tmp"
 
 # Keystore config
-KEYSTORE = "keystore.jks"
-STOREPASS = "123456"
-KEYALIAS = "mykey"
-KEYPASS = "123456"
+KEYSTORE = "sketcher.jks"
+STOREPASS = "sketcher"
+KEYALIAS = "sketcher"
+KEYPASS = "sketcher"
 
 ZIPALIGN = "zipalign"
 APKSIGNER = "/opt/android-sdk/android-14/apksigner"
