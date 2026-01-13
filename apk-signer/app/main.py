@@ -76,7 +76,7 @@ def ndk_build(req: NDKBuildRequest):
             "status": "success",
             "message": "NDK build successful",
             "data": {
-                "download_url": f"https://my.ndk.com/download/{req.name}.zip"
+                "download_url": f"https://apk-signer.onrender.com/download/{req.name}.zip"
             }
         }
 
