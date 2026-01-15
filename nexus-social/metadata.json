@@ -1,0 +1,9 @@
+{
+  "name": "Nexus Social",
+  "description": "A high-fidelity, feature-rich social media platform with real-time interactions, AI-powered post assistance, and a seamless mobile-first design.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}
