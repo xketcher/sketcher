@@ -1,5 +1,4 @@
 import os
-import uuid
 import shutil
 import subprocess
 import threading
@@ -90,20 +89,25 @@ def create_keystore(
 # =====================
 @app.post("/sign-apk")
 def sign_apk(
+    password: str = Form(...),
+    alias_name: str = Form(...),
+    alias_password: str = Form(...),
     jks: UploadFile = File(...),
     apk: UploadFile = File(...)
 ):
     try:
-        uid = str(uuid.uuid4())
+        # APK filename ကနေ name ထုတ်
+        base_name = os.path.splitext(apk.filename)[0]
 
-        jks_path = os.path.join(DOWNLOAD_DIR, f"{uid}.jks")
-        in_apk_path = os.path.join(DOWNLOAD_DIR, f"{uid}_in.apk")
-        out_apk_path = os.path.join(DOWNLOAD_DIR, f"{uid}_signed.apk")
+        jks_path = os.path.join(DOWNLOAD_DIR, f"{base_name}.jks")
+        in_apk_path = os.path.join(DOWNLOAD_DIR, f"{base_name}_in.apk")
+        out_apk_path = os.path.join(DOWNLOAD_DIR, f"{base_name}_signed.apk")
 
-        # Save uploaded files
+        # Save uploaded keystore
         with open(jks_path, "wb") as f:
             shutil.copyfileobj(jks.file, f)
 
+        # Save uploaded apk
         with open(in_apk_path, "wb") as f:
             shutil.copyfileobj(apk.file, f)
 
@@ -111,24 +115,30 @@ def sign_apk(
         cmd = [
             "apksigner", "sign",
             "--ks", jks_path,
-            "--ks-pass", "pass:keystore113",
-            "--key-pass", "pass:keystore113",
+            "--ks-pass", f"pass:{password}",
+            "--ks-key-alias", alias_name,
+            "--key-pass", f"pass:{alias_password}",
             "--out", out_apk_path,
             in_apk_path
         ]
 
         subprocess.run(cmd, check=True)
 
-        # Auto delete
-        auto_delete(jks_path)
-        auto_delete(in_apk_path)
+        # 🔥 temp files ကိုချက်ချင်းဖျက်
+        if os.path.exists(jks_path):
+            os.remove(jks_path)
+
+        if os.path.exists(in_apk_path):
+            os.remove(in_apk_path)
+
+        # signed apk ကိုသာ auto delete
         auto_delete(out_apk_path)
 
         return {
             "status": "success",
             "message": "APK signed successfully",
             "data": {
-                "download_url": f"{BASE_URL}/download/{uid}_signed.apk"
+                "download_url": f"{BASE_URL}/download/{base_name}_signed.apk"
             }
         }
 
@@ -136,4 +146,4 @@ def sign_apk(
         return JSONResponse(
             status_code=500,
             content={"status": "failed", "message": str(e)}
-        )
+)
