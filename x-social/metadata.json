@@ -1,0 +1,7 @@
+{
+  "name": "Ketcher Social",
+  "description": "A feature-rich social networking application with feed, friends, real-time-like interactions, search, and profile management, powered by the Ketcher API.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
