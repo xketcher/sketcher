@@ -3,9 +3,10 @@ FROM eclipse-temurin:11-jdk-jammy
 ENV ANDROID_HOME=/opt/android-sdk
 ENV PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools
 
-# System deps
+# 🔹 System deps + Python
 RUN apt-get update && apt-get install -y \
     wget unzip git curl \
+    python3 python3-pip \
     && rm -rf /var/lib/apt/lists/*
 
 # Android SDK
@@ -23,8 +24,9 @@ RUN sdkmanager \
     "build-tools;33.0.2"
 
 WORKDIR /app
+
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip3 install --no-cache-dir -r requirements.txt
 
 COPY . .
 
